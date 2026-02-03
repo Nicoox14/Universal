@@ -108,6 +108,14 @@ local NameESPEnabled = false
 local NameESPColor = Color3.fromRGB(255, 255, 255)
 local DistanceESPEnabled = false
 local DistanceESPColor = Color3.fromRGB(255, 255, 255)
+
+-- Variables for Health Bar ESP
+local HealthBarESPEnabled = false
+local HealthBarESPColor1 = Color3.fromRGB(0, 255, 0)
+local HealthBarESPColor2 = Color3.fromRGB(0, 255, 0)
+local HealthBarESPGradient = false
+local HealthBarLabels = {}
+local HealthBarOutlines = {}
 local TracersEnabled = false
 local TracersColor = Color3.fromRGB(255, 0, 0)
 
@@ -125,6 +133,8 @@ local PlayerRemovingConnection = nil
 -- Variables for Player features
 local WalkspeedEnabled = false
 local WalkspeedValue = 16
+local WalkspeedMethod = "Velocity"  -- "Velocity" or "CFrame"
+local WalkspeedConnection = nil
 local JumpPowerEnabled = false
 local JumpPowerValue = 50
 local FOVChangerEnabled = false
@@ -163,6 +173,7 @@ local SpinBotConnection = nil
 local AntiAimConnection = nil
 local FakeLagConnection = nil
 local ShootThroughWallEnabled = false
+local ShootThroughWallToggleEnabled = false  -- Tracks if toggle is enabled
 local ShootThroughWallKey = Enum.KeyCode.X
 local ShootThroughWallDistance = 2  -- Distance to move camera forward in studs
 local ShootThroughWallConnection = nil
@@ -692,6 +703,19 @@ do
         end,
     })
 
+    InfoSection:AddToggle({
+        Name = "Health Bar ESP",
+        Default = false,
+        Callback = function(Value)
+            HealthBarESPEnabled = Value
+            if Value then
+                StartHealthBarESP()
+            else
+                StopHealthBarESP()
+            end
+        end,
+    })
+
     -- Colors Section: All Color Pickers in order
     ColorsSection:AddColorPicker({
         Name = "Box ESP Color",
@@ -769,6 +793,33 @@ do
             DistanceESPColor = Value
             UpdateDistanceESPColors()
         end
+    })
+
+    ColorsSection:AddColorPicker({
+        Name = "Health Bar Color 1",
+        Default = Color3.fromRGB(0, 255, 0),
+        Callback = function(Value)
+            HealthBarESPColor1 = Value
+            UpdateHealthBarESPColors()
+        end
+    })
+
+    ColorsSection:AddColorPicker({
+        Name = "Health Bar Color 2",
+        Default = Color3.fromRGB(0, 255, 0),
+        Callback = function(Value)
+            HealthBarESPColor2 = Value
+            UpdateHealthBarESPColors()
+        end
+    })
+
+    ColorsSection:AddToggle({
+        Name = "Health Bar Gradient",
+        Default = false,
+        Callback = function(Value)
+            HealthBarESPGradient = Value
+            UpdateHealthBarESPColors()
+        end,
     })
 end
 
@@ -859,6 +910,24 @@ do
         end,
     })
 
+    SettingsSection:AddDropdown({
+        Name = "Walkspeed Method",
+        Values = {"Velocity", "CFrame"},
+        Default = "Velocity",
+        Callback = function(Value)
+            if type(Value) == "table" then
+                WalkspeedMethod = Value[1] or "Velocity"
+            elseif type(Value) == "string" then
+                WalkspeedMethod = Value
+            else
+                WalkspeedMethod = "Velocity"
+            end
+            if WalkspeedEnabled then
+                UpdateWalkspeed()
+            end
+        end,
+    })
+
     SettingsSection:AddSlider({
         Name = "Jump Power Value",
         Min = 0,
@@ -930,118 +999,9 @@ do
         end,
     })
 
-    MovementSection:AddToggle({
-        Name = "Anti-Aim",
-        Default = false,
-        Callback = function(Value)
-            AntiAimEnabled = Value
-            if Value then
-                StartAntiAim()
-            else
-                StopAntiAim()
-            end
-        end,
-    })
+    -- Visuals Section: Empty (left blank)
 
-    MovementSection:AddToggle({
-        Name = "Fake Lag",
-        Default = false,
-        Callback = function(Value)
-            FakeLagEnabled = Value
-            if Value then
-                StartFakeLag()
-            else
-                StopFakeLag()
-            end
-        end,
-    })
-
-    MovementSection:AddToggle({
-        Name = "Shoot Through Wall",
-        Default = false,
-        Callback = function(Value)
-            ShootThroughWallEnabled = Value
-            if Value then
-                StartShootThroughWall()
-            else
-                StopShootThroughWall()
-            end
-        end,
-    })
-
-    MovementSection:AddToggle({
-        Name = "Silent Aim",
-        Default = false,
-        Callback = function(Value)
-            HitboxExpanderEnabled = Value
-            if Value then
-                StartHitboxExpander()
-            else
-                StopHitboxExpander()
-            end
-        end,
-    })
-
-    -- Visuals Section: Only Toggles
-    VisualsSection:AddToggle({
-        Name = "Self Chams",
-        Default = false,
-        Callback = function(Value)
-            SelfChamsEnabled = Value
-            if Value then
-                StartSelfChams()
-            else
-                StopSelfChams()
-            end
-        end,
-    })
-
-    VisualsSection:AddToggle({
-        Name = "Viewmodel Chams",
-        Default = false,
-        Callback = function(Value)
-            ViewmodelChamsEnabled = Value
-            if Value then
-                StartViewmodelChams()
-                if ViewmodelChamsRainbowEnabled then
-                    StartViewmodelChamsRainbow()
-                end
-            else
-                StopViewmodelChams()
-                StopViewmodelChamsRainbow()
-            end
-        end,
-    })
-
-    VisualsSection:AddToggle({
-        Name = "Viewmodel Chams Rainbow (RGB)",
-        Default = false,
-        Callback = function(Value)
-            ViewmodelChamsRainbowEnabled = Value
-            if Value then
-                if ViewmodelChamsEnabled then
-                    StartViewmodelChamsRainbow()
-                end
-            else
-                StopViewmodelChamsRainbow()
-            end
-        end,
-    })
-
-    VisualsSection:AddToggle({
-        Name = "Third Person",
-        Default = false,
-        Callback = function(Value)
-            ThirdPersonEnabled = Value
-            if Value then
-                StartThirdPerson()
-            else
-                StopThirdPerson()
-            end
-        end,
-    })
-
-    -- Settings Section: All Sliders and Keybinds in order
+    -- Settings Section: Spin Bot Speed and Server Buttons
     SettingsSection:AddSlider({
         Name = "Spin Bot Speed",
         Min = 0,
@@ -1051,89 +1011,6 @@ do
         Callback = function(Value)
             SpinBotSpeed = Value
         end,
-    })
-
-    SettingsSection:AddSlider({
-        Name = "Anti-Aim Speed",
-        Min = 0,
-        Max = 50,
-        Default = 10,
-        Type = " Speed",
-        Callback = function(Value)
-            AntiAimSpeed = Value
-        end,
-    })
-
-    SettingsSection:AddSlider({
-        Name = "Fake Lag Delay",
-        Min = 0,
-        Max = 1,
-        Round = 2,
-        Default = 0.1,
-        Type = " Seconds",
-        Callback = function(Value)
-            FakeLagDelay = Value
-        end,
-    })
-
-    SettingsSection:AddSlider({
-        Name = "STW Distance",
-        Min = 0.5,
-        Max = 10,
-        Round = 1,
-        Default = 2,
-        Type = " Studs",
-        Callback = function(Value)
-            ShootThroughWallDistance = Value
-        end,
-    })
-
-    SettingsSection:AddKeybind({
-        Name = "STW Key",
-        Default = "X",
-        Callback = function(Key)
-            local newKey = nil
-            if type(Key) == "string" then
-                local keyUpper = Key:upper()
-                newKey = Enum.KeyCode[keyUpper]
-            elseif typeof(Key) == "EnumItem" and Key.EnumType == Enum.KeyCode then
-                newKey = Key
-            end
-            if newKey then
-                ShootThroughWallKey = newKey
-            else
-                ShootThroughWallKey = Enum.KeyCode.X
-            end
-        end,
-    })
-
-    SettingsSection:AddSlider({
-        Name = "Third Person Dist",
-        Min = 0,
-        Max = 50,
-        Default = 10,
-        Type = " Studs",
-        Callback = function(Value)
-            ThirdPersonDistance = Value
-        end,
-    })
-
-    SettingsSection:AddColorPicker({
-        Name = "Self Chams Color",
-        Default = Color3.fromRGB(255, 0, 255),
-        Callback = function(Value)
-            SelfChamsColor = Value
-            UpdateSelfChams()
-        end
-    })
-
-    SettingsSection:AddColorPicker({
-        Name = "Viewmodel Chams Color",
-        Default = Color3.fromRGB(0, 255, 255),
-        Callback = function(Value)
-            ViewmodelChamsColor = Value
-            UpdateViewmodelChams()
-        end
     })
 
     SettingsSection:AddButton({
@@ -1146,8 +1023,10 @@ do
     SettingsSection:AddButton({
         Name = "Server Hop",
         Callback = function()
+            local TeleportService = game:GetService("TeleportService")
+            local HttpService = game:GetService("HttpService")
             local success, result = pcall(function()
-                local servers = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+                local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
                 local serverList = servers.data
                 if #serverList > 1 then
                     local randomServer = serverList[math.random(2, #serverList)]
@@ -3258,19 +3137,92 @@ LocalPlayer.CharacterAdded:Connect(function(character)
 end)
 
 -- ========== PLAYER FEATURES ==========
--- Function to update walkspeed
-function UpdateWalkspeed()
-    local character = LocalPlayer.Character
-    if not character then return end
-    
+-- Helper function to check if player is alive
+local function IsPlayerAlive(character)
+    if not character then return false end
     local humanoid = character:FindFirstChild("Humanoid")
-    if not humanoid then return end
+    if not humanoid then return false end
+    return humanoid.Health > 0
+end
+
+-- Helper function to get character, root, and humanoid
+local function GetCharacter()
+    local character = LocalPlayer.Character
+    if not character then return nil end
+    local root = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not IsPlayerAlive(character) then return nil end
+    if not root or not humanoid then return nil end
+    return character, root, humanoid
+end
+
+-- Helper function to get Y rotation from CFrame
+local function GetYRotation(cframe)
+    local _, y = cframe:ToOrientation()
+    return CFrame.new(cframe.Position) * CFrame.Angles(0, y, 0)
+end
+
+-- Helper function to get move direction
+local function GetMoveDirection()
+    local dir = Vector3.zero
+    if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + Vector3.new(0, 0, -1) end
+    if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir + Vector3.new(0, 0, 1) end
+    if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir + Vector3.new(-1, 0, 0) end
+    if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + Vector3.new(1, 0, 0) end
+    return dir.Magnitude > 0 and dir.Unit or nil
+end
+
+-- Function to update walkspeed (with method support)
+function UpdateWalkspeed()
+    if WalkspeedConnection then
+        WalkspeedConnection:Disconnect()
+        WalkspeedConnection = nil
+    end
     
-    if WalkspeedEnabled then
+    if not WalkspeedEnabled then
+        -- Reset to original walkspeed if disabled
+        local character = LocalPlayer.Character
+        if character then
+            local humanoid = character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = OriginalWalkspeed
+            end
+        end
+        return
+    end
+    
+    -- If using Velocity or CFrame method, use connection-based approach
+    if WalkspeedMethod == "Velocity" or WalkspeedMethod == "CFrame" then
+        WalkspeedConnection = RunService.Stepped:Connect(function()
+            local character, root, humanoid = GetCharacter()
+            if not character then return end
+            if not WalkspeedEnabled then return end
+            
+            local moveDir = GetMoveDirection()
+            if not moveDir then return end
+            
+            local camCF = Camera.CFrame
+            local forward = GetYRotation(camCF):VectorToWorldSpace(moveDir)
+            local Speed = WalkspeedValue
+            
+            if WalkspeedMethod == "Velocity" then
+                local velocity = forward * Speed
+                root.Velocity = Vector3.new(velocity.X, root.Velocity.Y, velocity.Z)
+            elseif WalkspeedMethod == "CFrame" then
+                local offset = forward * (Speed / 50)
+                root.CFrame = root.CFrame + Vector3.new(offset.X, 0, offset.Z)
+            end
+        end)
+    else
+        -- Default: Use WalkSpeed property
+        local character = LocalPlayer.Character
+        if not character then return end
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        if not humanoid then return end
+        
         OriginalWalkspeed = humanoid.WalkSpeed
         humanoid.WalkSpeed = WalkspeedValue
-    else
-        humanoid.WalkSpeed = OriginalWalkspeed
     end
 end
 
@@ -3457,6 +3409,222 @@ function StopNoclip()
     end
 end
 
+-- ========== HEALTH BAR ESP FUNCTIONS ==========
+function CreateHealthBarESP(player)
+    if not player or not player.Character then return end
+    
+    local healthBar = Drawing.new("Square")
+    healthBar.Visible = true
+    healthBar.Color = HealthBarESPColor1
+    healthBar.Thickness = 1
+    healthBar.Transparency = 1
+    healthBar.Filled = true
+    
+    local healthBarOutline = Drawing.new("Square")
+    healthBarOutline.Visible = true
+    healthBarOutline.Color = Color3.fromRGB(10, 10, 10)
+    healthBarOutline.Thickness = 1
+    healthBarOutline.Transparency = 0.7
+    healthBarOutline.Filled = true
+    
+    HealthBarLabels[player] = healthBar
+    HealthBarOutlines[player] = healthBarOutline
+end
+
+function UpdateHealthBarESP(player)
+    if not HealthBarLabels[player] or not player.Character then return end
+    
+    local character = player.Character
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChild("Humanoid")
+    
+    if not humanoidRootPart or not humanoid or humanoid.Health <= 0 then
+        if HealthBarLabels[player] then
+            HealthBarLabels[player].Visible = false
+        end
+        if HealthBarOutlines[player] then
+            HealthBarOutlines[player].Visible = false
+        end
+        return
+    end
+    
+    local characterCFrame = humanoidRootPart.CFrame
+    local boxWidth = 2.5
+    local boxHeight = 5.2
+    local boxDepth = 1.5
+    
+    -- Calculate bounding box corners
+    local corners = {
+        characterCFrame:PointToWorldSpace(Vector3.new(-boxWidth/2, boxHeight/2, -boxDepth/2)),
+        characterCFrame:PointToWorldSpace(Vector3.new(boxWidth/2, boxHeight/2, -boxDepth/2)),
+        characterCFrame:PointToWorldSpace(Vector3.new(-boxWidth/2, -boxHeight/2, -boxDepth/2)),
+        characterCFrame:PointToWorldSpace(Vector3.new(boxWidth/2, -boxHeight/2, -boxDepth/2)),
+        characterCFrame:PointToWorldSpace(Vector3.new(-boxWidth/2, boxHeight/2, boxDepth/2)),
+        characterCFrame:PointToWorldSpace(Vector3.new(boxWidth/2, boxHeight/2, boxDepth/2)),
+        characterCFrame:PointToWorldSpace(Vector3.new(-boxWidth/2, -boxHeight/2, boxDepth/2)),
+        characterCFrame:PointToWorldSpace(Vector3.new(boxWidth/2, -boxHeight/2, boxDepth/2))
+    }
+    
+    -- Project to screen space
+    local screenCorners = {}
+    local minX, maxX, minY, maxY = math.huge, -math.huge, math.huge, -math.huge
+    local hasValidCorner = false
+    
+    for _, corner in ipairs(corners) do
+        local screenPoint, onScreen = Camera:WorldToViewportPoint(corner)
+        if onScreen then
+            table.insert(screenCorners, screenPoint)
+            minX = math.min(minX, screenPoint.X)
+            maxX = math.max(maxX, screenPoint.X)
+            minY = math.min(minY, screenPoint.Y)
+            maxY = math.max(maxY, screenPoint.Y)
+            hasValidCorner = true
+        end
+    end
+    
+    if hasValidCorner then
+        local fullSize = maxY - minY
+        local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+        local chunk = fullSize * healthPercent
+        
+        -- Position health bar on the left side
+        local barX = minX - 5
+        local barY = maxY - chunk
+        local barWidth = 2
+        local barHeight = chunk
+        
+        -- Update health bar
+        HealthBarLabels[player].Size = Vector2.new(barWidth, barHeight)
+        HealthBarLabels[player].Position = Vector2.new(barX, barY)
+        
+        -- Update outline
+        if HealthBarOutlines[player] then
+            HealthBarOutlines[player].Size = Vector2.new(4, fullSize + 2)
+            HealthBarOutlines[player].Position = Vector2.new(barX - 1, minY - 1)
+            HealthBarOutlines[player].Visible = true
+        end
+        
+        if HealthBarESPGradient then
+            local color = HealthBarESPColor1:Lerp(HealthBarESPColor2, healthPercent)
+            HealthBarLabels[player].Color = color
+        else
+            HealthBarLabels[player].Color = HealthBarESPColor1
+        end
+        
+        HealthBarLabels[player].Visible = true
+    else
+        HealthBarLabels[player].Visible = false
+        if HealthBarOutlines[player] then
+            HealthBarOutlines[player].Visible = false
+        end
+    end
+end
+
+function UpdateHealthBarESPColors()
+    for player, bar in pairs(HealthBarLabels) do
+        if bar and player.Character then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid then
+                local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+                if HealthBarESPGradient then
+                    bar.Color = HealthBarESPColor1:Lerp(HealthBarESPColor2, healthPercent)
+                else
+                    bar.Color = HealthBarESPColor1
+                end
+            end
+        end
+    end
+end
+
+function StartHealthBarESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and not IsTeammate(player) then
+            if player.Character then
+                CreateHealthBarESP(player)
+            else
+                local characterConnection
+                characterConnection = player.CharacterAdded:Connect(function(character)
+                    if HealthBarESPEnabled then
+                        CreateHealthBarESP(player)
+                    end
+                    characterConnection:Disconnect()
+                end)
+            end
+        end
+    end
+    
+    Players.PlayerAdded:Connect(function(player)
+        if player == LocalPlayer or IsTeammate(player) then return end
+        if player.Character then
+            CreateHealthBarESP(player)
+        else
+            local characterConnection
+            characterConnection = player.CharacterAdded:Connect(function(character)
+                if HealthBarESPEnabled then
+                    CreateHealthBarESP(player)
+                end
+                characterConnection:Disconnect()
+            end)
+        end
+    end)
+    
+    Players.PlayerRemoving:Connect(function(player)
+        if HealthBarLabels[player] then
+            HealthBarLabels[player]:Remove()
+            HealthBarLabels[player] = nil
+        end
+        if HealthBarOutlines[player] then
+            HealthBarOutlines[player]:Remove()
+            HealthBarOutlines[player] = nil
+        end
+    end)
+    
+    RunService.RenderStepped:Connect(function()
+        if HealthBarESPEnabled then
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and not IsTeammate(player) and player.Character and not HealthBarLabels[player] then
+                    CreateHealthBarESP(player)
+                end
+            end
+            
+            for player, bar in pairs(HealthBarLabels) do
+                if bar and player.Character and not IsTeammate(player) then
+                    local humanoid = player.Character:FindFirstChild("Humanoid")
+                    if humanoid and humanoid.Health <= 0 then
+                        bar.Visible = false
+                    else
+                        UpdateHealthBarESP(player)
+                    end
+                elseif not PlayerStillExists(player) or IsTeammate(player) then
+                    if HealthBarLabels[player] then
+                        HealthBarLabels[player]:Remove()
+                        HealthBarLabels[player] = nil
+                    end
+                    if HealthBarOutlines[player] then
+                        HealthBarOutlines[player]:Remove()
+                        HealthBarOutlines[player] = nil
+                    end
+                end
+            end
+        end
+    end)
+end
+
+function StopHealthBarESP()
+    for player, bar in pairs(HealthBarLabels) do
+        if bar then
+            bar:Remove()
+        end
+    end
+    for player, outline in pairs(HealthBarOutlines) do
+        if outline then
+            outline:Remove()
+        end
+    end
+    HealthBarLabels = {}
+    HealthBarOutlines = {}
+end
+
 -- Update character features on respawn
 LocalPlayer.CharacterAdded:Connect(function(character)
     wait(0.1) -- Wait for character to fully load
@@ -3479,7 +3647,14 @@ UserInputService.InputBegan:Connect(function(Input, GameProcessed)
     if GameProcessed then return end
     
     -- Check if Shoot Through Wall keybind is pressed
+    -- Only work if Shoot Through Wall toggle is enabled (like Aimbot)
     if Input.KeyCode == ShootThroughWallKey then
+        -- Only allow keybind to work if toggle is enabled
+        if not ShootThroughWallToggleEnabled then
+            return  -- Do nothing if toggle is off
+        end
+        
+        -- Toggle the feature on/off
         ShootThroughWallEnabled = not ShootThroughWallEnabled
         if ShootThroughWallEnabled then
             StartShootThroughWall()
