@@ -281,6 +281,7 @@ local ViewmodelChamsRainbowEnabled = false
 local ViewmodelChamsRainbowConnection = nil
 local ViewmodelChamsOriginalColors = {}  -- Store original colors globally
 local ThirdPersonEnabled = false
+local ThirdPersonToggleEnabled = false  -- Tracks if toggle is enabled
 local ThirdPersonDistance = 10
 local ThirdPersonKey = Enum.KeyCode.E
 local RejoinEnabled = false
@@ -290,6 +291,7 @@ local ViewmodelChamsConnection = nil
 local ThirdPersonConnection = nil
 local SpinBotConnection = nil
 local ShootThroughWallEnabled = false
+local ShootThroughWallToggleEnabled = false  -- Tracks if toggle is enabled
 local ShootThroughWallKey = Enum.KeyCode.X
 local ShootThroughWallDistance = 2  -- Distance to move camera forward in studs
 local ShootThroughWallConnection = nil
@@ -1353,6 +1355,7 @@ do
         Name = "Third Person",
         Default = false,
         Callback = function(Value)
+            ThirdPersonToggleEnabled = Value  -- Track toggle state
             ThirdPersonEnabled = Value
             StartThirdPerson()
         end,
@@ -1553,6 +1556,7 @@ do
         Name = "Shoot Through Wall",
         Default = false,
         Callback = function(Value)
+            ShootThroughWallToggleEnabled = Value  -- Track toggle state
             ShootThroughWallEnabled = Value
             if Value then
                 StartShootThroughWall()
@@ -3908,6 +3912,12 @@ UserInputService.InputBegan:Connect(function(Input, GameProcessed)
     if GameProcessed then return end
     
     if Input.KeyCode == ThirdPersonKey then
+        -- Only allow keybind to work if toggle is enabled
+        if not ThirdPersonToggleEnabled then
+            return  -- Do nothing if toggle is off
+        end
+        
+        -- Toggle the feature on/off
         ThirdPersonEnabled = not ThirdPersonEnabled
         StartThirdPerson()
     end
@@ -5440,7 +5450,14 @@ UserInputService.InputBegan:Connect(function(Input, GameProcessed)
     if GameProcessed then return end
     
     -- Check if Shoot Through Wall keybind is pressed
+    -- Only work if Shoot Through Wall toggle is enabled (like Aimbot)
     if Input.KeyCode == ShootThroughWallKey then
+        -- Only allow keybind to work if toggle is enabled
+        if not ShootThroughWallToggleEnabled then
+            return  -- Do nothing if toggle is off
+        end
+        
+        -- Toggle the feature on/off
         ShootThroughWallEnabled = not ShootThroughWallEnabled
         if ShootThroughWallEnabled then
             StartShootThroughWall()
